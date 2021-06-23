@@ -1,11 +1,16 @@
 package proxyserver
 
-import "github.com/sirupsen/logrus"
+import (
+	"net/http"
+
+	"github.com/sirupsen/logrus"
+)
 
 // Server ...
 type Server struct {
 	config *Config
 	logger *logrus.Logger
+	mux    *http.ServeMux
 }
 
 // New ...
@@ -13,6 +18,7 @@ func New(config *Config) *Server {
 	return &Server{
 		config: config,
 		logger: logrus.New(),
+		mux:    http.NewServeMux(),
 	}
 }
 
@@ -24,7 +30,13 @@ func (s *Server) Start() error {
 	if err := s.configureLogger(); err != nil {
 		return err
 	}
-	s.logger.Info("Server is starting...")
+	s.logger.Infof("Server is starting at port%s ...", s.config.Port)
+
+	s.Routes()
+	if err := http.ListenAndServe(s.config.Port, s.mux); err != nil {
+		return err
+	}
+
 	return nil
 }
 

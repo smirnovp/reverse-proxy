@@ -3,4 +3,4 @@ loglevel = "debug"
 
 [proxyserver]
 url = "habr.com"
-port = ":8282"
+port = ":8080"
