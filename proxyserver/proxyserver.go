@@ -1,7 +1,9 @@
 package proxyserver
 
 import (
+	"context"
 	"net/http"
+	"reverse-proxy/cache"
 
 	"github.com/sirupsen/logrus"
 )
@@ -11,14 +13,16 @@ type Server struct {
 	config *Config
 	logger *logrus.Logger
 	mux    *http.ServeMux
+	cache  *cache.Storage
 }
 
 // New ...
-func New(config *Config) *Server {
+func New(config *Config, cache *cache.Storage) *Server {
 	return &Server{
 		config: config,
 		logger: logrus.New(),
 		mux:    http.NewServeMux(),
+		cache:  cache,
 	}
 }
 
@@ -30,6 +34,13 @@ func (s *Server) Start() error {
 	if err := s.configureLogger(); err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := s.cache.Run(ctx); err != nil {
+		return err
+	}
+
 	s.logger.Infof("Server is starting at port%s ...", s.config.Port)
 
 	s.Routes()

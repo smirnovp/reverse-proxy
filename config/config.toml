@@ -4,3 +4,7 @@ loglevel = "debug"
 [proxyserver]
 url = "habr.com"
 port = ":8080"
+
+[cache]
+size = 10
+dir = "cache/files"
