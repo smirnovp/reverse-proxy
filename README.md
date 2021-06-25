@@ -1,6 +1,6 @@
 # reverse-proxy
 test task
-# (UNDER CONSTRUCTION)
+# [SOLVED] TODO: tests, refactoring
 # Тестовое задание для стажера Go-программиста
 
 Необходимо разработать кэширующий http-прокси (обратный прокси).
