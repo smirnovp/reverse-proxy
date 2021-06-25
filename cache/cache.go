@@ -110,7 +110,7 @@ func (s *Storage) CacheData(key string, data []byte) {
 		}
 
 		if len(s.Items) >= s.config.Size {
-			s.RemoveOldestItem()
+			s.removeOldestItem()
 		}
 
 		t := time.Now()
@@ -136,8 +136,8 @@ func (s *Storage) CacheData(key string, data []byte) {
 	}
 }
 
-// RemoveOldestItem ...
-func (s *Storage) RemoveOldestItem() {
+// removeOldestItem ...
+func (s *Storage) removeOldestItem() {
 	if len(s.Items) < s.config.Size {
 		return
 	}
