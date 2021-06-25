@@ -20,6 +20,8 @@ func (s *Server) ProxyHandler() http.HandlerFunc {
 		res, err := http.Get("http://" + urn)
 		if err != nil {
 			s.logger.Error(err)
+			http.Error(w, "Error reading body", http.StatusBadRequest)
+			return
 		}
 
 		body, err := io.ReadAll(res.Body)

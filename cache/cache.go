@@ -39,6 +39,10 @@ func (s *Storage) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = s.checkStorage()
+	if err != nil {
+		return err
+	}
 	go func() {
 		for {
 			select {
@@ -65,7 +69,18 @@ func (s *Storage) GetCacheReader(key string) (io.ReadCloser, error) {
 	s.fc <- func() {
 		item, ok := s.Items[key]
 		if ok {
-			f, err := os.Open(path.Join(s.config.Dir, item.Filename))
+			// if corresponding file does not exist, then check the storage
+			if _, err := os.Stat(item.Filename); os.IsNotExist(err) {
+				log.Println("Файл не существует. Подчищаю хранилище кэшей.")
+				err := s.checkStorage()
+				if err != nil {
+					ansc <- ans{nil, err}
+					return
+				}
+				ansc <- ans{nil, nil}
+				return
+			}
+			f, err := os.Open(item.Filename)
 			if err != nil {
 				ansc <- ans{nil, err}
 				return
@@ -93,13 +108,13 @@ func (s *Storage) CacheData(key string, data []byte) {
 		}
 
 		if len(s.Items) >= s.config.Size {
-			s.RemoveItem()
+			s.RemoveOldestItem()
 		}
 
 		t := time.Now()
-		filename := path.Clean(strings.ReplaceAll(key, string(os.PathSeparator), "_"))
+		filename := path.Join(s.config.Dir, strings.ReplaceAll(key, string(os.PathSeparator), "_"))
 
-		f, err := os.Create(path.Join(s.config.Dir, filename))
+		f, err := os.Create(filename)
 		if err != nil {
 			log.Println("Ошибка создания кэш-файла: ", err)
 			return
@@ -119,7 +134,52 @@ func (s *Storage) CacheData(key string, data []byte) {
 	}
 }
 
-// RemoveItem ...
-func (s *Storage) RemoveItem() {
+// RemoveOldestItem ...
+func (s *Storage) RemoveOldestItem() {
+	if len(s.Items) < s.config.Size {
+		return
+	}
+	minTime := time.Now()
+	minKey := ""
+	for key, item := range s.Items {
+		if minTime.After(item.CreateTime) {
+			minTime = item.CreateTime
+			minKey = key
+		}
+	}
+	err := os.Remove(s.Items[minKey].Filename)
+	if err != nil {
+		log.Println("Could`t remove file: ", err)
+	}
+	delete(s.Items, minKey)
+}
 
+func (s *Storage) checkStorage() error {
+	log.Println("Start checking the cache storage...")
+	for key, item := range s.Items {
+		if _, err := os.Stat(item.Filename); os.IsNotExist(err) {
+			log.Println("File does not exist. Remove the corresponding key from the map")
+			delete(s.Items, key)
+		}
+	}
+	files, err := os.ReadDir(s.config.Dir)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		filename := path.Join(s.config.Dir, f.Name())
+		rem := true
+		for _, item := range s.Items {
+			if item.Filename == filename {
+				rem = false
+			}
+		}
+		if rem {
+			err := os.Remove(filename)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
