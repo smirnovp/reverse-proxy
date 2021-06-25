@@ -8,17 +8,15 @@ import (
 
 // Config ...
 type Config struct {
-	URL      string `toml:"url"`
-	Port     string `toml:"port"`
-	LogLevel string `toml:"loglevel"`
+	URL  string `toml:"url"`
+	Port string `toml:"port"`
 }
 
 // NewConfig ...
 func NewConfig() *Config {
 	return &Config{
-		URL:      "habr.com",
-		Port:     ":8080",
-		LogLevel: "debug",
+		URL:  "habr.com",
+		Port: ":8080",
 	}
 }
 
@@ -33,10 +31,8 @@ func (c *Config) GetFromFile(f string) error {
 
 	viper.SetDefault("proxyserver.url", "habr.com")
 	viper.SetDefault("proxyserver.port", ":8080")
-	viper.SetDefault("logger.loglevel", "debug")
 
 	c.URL = viper.GetString("proxyserver.url")
 	c.Port = viper.GetString("proxyserver.port")
-	c.LogLevel = viper.GetString("logger.loglevel")
 	return nil
 }

@@ -2,13 +2,13 @@ package cache
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Item ...
@@ -20,14 +20,16 @@ type Item struct {
 // Storage ...
 type Storage struct {
 	config *Config
+	logger *logrus.Logger
 	Items  map[string]Item
 	fc     chan func()
 }
 
 // New ...
-func New(config *Config) *Storage {
+func New(logger *logrus.Logger, config *Config) *Storage {
 	return &Storage{
 		config: config,
+		logger: logger,
 		Items:  make(map[string]Item),
 		fc:     make(chan func()),
 	}
@@ -71,7 +73,7 @@ func (s *Storage) GetCacheReader(key string) (io.ReadCloser, error) {
 		if ok {
 			// if corresponding file does not exist, then check the storage
 			if _, err := os.Stat(item.Filename); os.IsNotExist(err) {
-				log.Println("Файл не существует. Подчищаю хранилище кэшей.")
+				s.logger.Warn("Битая ссылка на файл хранилище кэшей. Запускаю проверку хранилища.")
 				err := s.checkStorage()
 				if err != nil {
 					ansc <- ans{nil, err}
@@ -103,7 +105,7 @@ func (s *Storage) CacheData(key string, data []byte) {
 	s.fc <- func() {
 		_, ok := s.Items[key]
 		if ok {
-			fmt.Println("Данные уже есть в кэше. Ничего не делаем.")
+			s.logger.Info("Данные уже есть в кэше. Ничего не делаем.")
 			return
 		}
 
@@ -116,14 +118,14 @@ func (s *Storage) CacheData(key string, data []byte) {
 
 		f, err := os.Create(filename)
 		if err != nil {
-			log.Println("Ошибка создания кэш-файла: ", err)
+			s.logger.Error("Ошибка создания кэш-файла: ", err)
 			return
 		}
 		defer f.Close()
 
 		_, err = f.Write(data)
 		if err != nil {
-			log.Println("Не смог записать данные в файл: ", err)
+			s.logger.Error("Не смог записать данные в файл: ", err)
 			return
 		}
 
@@ -149,16 +151,18 @@ func (s *Storage) RemoveOldestItem() {
 	}
 	err := os.Remove(s.Items[minKey].Filename)
 	if err != nil {
-		log.Println("Could`t remove file: ", err)
+		s.logger.Error("Не смог удалить файл: ", err)
 	}
 	delete(s.Items, minKey)
 }
 
+// checkStorage checks if there are any broken references between files and filenames in the Storage structure
+// and eliminates them if any found.
 func (s *Storage) checkStorage() error {
-	log.Println("Start checking the cache storage...")
+	s.logger.Info("Start checking the cache storage...")
 	for key, item := range s.Items {
 		if _, err := os.Stat(item.Filename); os.IsNotExist(err) {
-			log.Println("File does not exist. Remove the corresponding key from the map")
+			s.logger.Info("Файл не существует. Удаляю соответствующую ссылку из map")
 			delete(s.Items, key)
 		}
 	}
@@ -177,6 +181,7 @@ func (s *Storage) checkStorage() error {
 		if rem {
 			err := os.Remove(filename)
 			if err != nil {
+				s.logger.Info("Не удалось удалить файл: ", err)
 				return err
 			}
 		}

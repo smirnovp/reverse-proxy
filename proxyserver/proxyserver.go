@@ -2,6 +2,7 @@ package proxyserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reverse-proxy/cache"
 
@@ -17,10 +18,10 @@ type Server struct {
 }
 
 // New ...
-func New(config *Config, cache *cache.Storage) *Server {
+func New(logger *logrus.Logger, config *Config, cache *cache.Storage) *Server {
 	return &Server{
 		config: config,
-		logger: logrus.New(),
+		logger: logger,
 		mux:    http.NewServeMux(),
 		cache:  cache,
 	}
@@ -28,12 +29,6 @@ func New(config *Config, cache *cache.Storage) *Server {
 
 // Start ...
 func (s *Server) Start() error {
-	if err := s.configureProxyServer(); err != nil {
-		return err
-	}
-	if err := s.configureLogger(); err != nil {
-		return err
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -41,25 +36,13 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	s.logger.Infof("Server is starting at port%s ...", s.config.Port)
-
 	s.Routes()
+
+	fmt.Printf("Server is starting at port%s ...\n", s.config.Port)
+
 	if err := http.ListenAndServe(s.config.Port, s.mux); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (s *Server) configureProxyServer() error {
-	return nil
-}
-
-func (s *Server) configureLogger() error {
-	level, err := logrus.ParseLevel(s.config.LogLevel)
-	if err != nil {
-		return err
-	}
-	s.logger.SetLevel(level)
 	return nil
 }
