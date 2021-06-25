@@ -1,5 +1,5 @@
 [logger]
-loglevel = "debug"
+level = "debug"
 
 [proxyserver]
 url = "habr.com"

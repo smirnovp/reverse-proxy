@@ -48,7 +48,6 @@ func (s *Server) CacheMiddleware(f http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		urn := s.config.URL + r.URL.String()
-		s.logger.Info("making request to: ", "http://"+urn)
 
 		cacheReader, err := s.cache.GetCacheReader(urn)
 		if err != nil {
@@ -57,9 +56,10 @@ func (s *Server) CacheMiddleware(f http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		//
 		if cacheReader != nil {
 			defer cacheReader.Close()
-			s.logger.Debug("Берем данные из кэша.")
+			s.logger.Info("Берем данные из кэша, запрос: ", "http://"+urn)
 			// Have cache data
 			_, err = io.Copy(w, cacheReader)
 			if err != nil {
@@ -68,7 +68,7 @@ func (s *Server) CacheMiddleware(f http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		s.logger.Debug("Кэш не найден. Делаем запрос.")
+		s.logger.Info("making request to: ", "http://"+urn)
 		f(w, r)
 	}
 }
